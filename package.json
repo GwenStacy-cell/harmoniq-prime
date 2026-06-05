@@ -27,6 +27,7 @@
     "dotenv": "^16.4.5",
     "ffmpeg-static": "^5.2.0",
     "genius-lyrics": "^4.4.4",
+    "libsodium-wrappers": "^0.7.16",
     "opusscript": "^0.0.8"
   }
 }
