@@ -60,18 +60,7 @@ client.distube = new DisTube(client, {
     path: ffmpegPath,
   },
   plugins: [
-    new YouTubePlugin({
-      // Load YouTube cookies from file to bypass bot detection on server IPs
-      // Create cookies.txt using the "Get cookies.txt LOCALLY" browser extension
-      cookies: (() => {
-        const cookieFile = path.join(__dirname, 'cookies.txt');
-        if (fs.existsSync(cookieFile)) {
-          console.log('🍪  YouTube cookies loaded from cookies.txt');
-          return fs.readFileSync(cookieFile, 'utf8');
-        }
-        return undefined;
-      })(),
-    }),
+    new YouTubePlugin({}),
     new SpotifyPlugin({    // ← Spotify → resolves to YouTube search
       api: {
         clientId:     process.env.SPOTIFY_CLIENT_ID,
