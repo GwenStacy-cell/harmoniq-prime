@@ -6,7 +6,6 @@
 require('dotenv').config();
 
 // ─── Single-Instance Lock ─────────────────────────────────────────────────────
-// Prevents running two copies at once (which causes 40060 errors)
 const fs   = require('fs');
 const path = require('path');
 const LOCK = path.join(__dirname, '.bot.lock');
@@ -61,7 +60,18 @@ client.distube = new DisTube(client, {
     path: ffmpegPath,
   },
   plugins: [
-    new YouTubePlugin(),   // ← YouTube audio extraction (required for DisTube v5)
+    new YouTubePlugin({
+      // Load YouTube cookies from file to bypass bot detection on server IPs
+      // Create cookies.txt using the "Get cookies.txt LOCALLY" browser extension
+      cookies: (() => {
+        const cookieFile = path.join(__dirname, 'cookies.txt');
+        if (fs.existsSync(cookieFile)) {
+          console.log('🍪  YouTube cookies loaded from cookies.txt');
+          return fs.readFileSync(cookieFile, 'utf8');
+        }
+        return undefined;
+      })(),
+    }),
     new SpotifyPlugin({    // ← Spotify → resolves to YouTube search
       api: {
         clientId:     process.env.SPOTIFY_CLIENT_ID,
