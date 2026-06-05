@@ -23,9 +23,14 @@ class YtDlpPlugin extends ExtractorPlugin {
     this.cookiesFile = options.cookiesFile || null;
   }
 
-  // Build yt-dlp options, injecting cookies file path if present
+  // Build yt-dlp options, injecting cookies + iOS client bypass
   #args(extra = {}) {
-    const base = { noWarnings: true, noCallHome: true, ...extra };
+    const base = {
+      noWarnings: true,
+      // Use iOS + TV embedded clients — bypasses bot detection on server IPs
+      extractorArgs: 'youtube:player_client=ios,web_creator,tv_embedded',
+      ...extra,
+    };
     if (this.cookiesFile && fs.existsSync(this.cookiesFile)) {
       base.cookies = this.cookiesFile;
     }
