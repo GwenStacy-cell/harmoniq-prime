@@ -6,27 +6,30 @@
 require('dotenv').config();
 
 // ─── Single-Instance Lock ─────────────────────────────────────────────────────
+// Skip lock when PM2 is managing the process (PM2 handles single-instance itself)
 const fs   = require('fs');
 const path = require('path');
-const LOCK = path.join(__dirname, '.bot.lock');
 
-if (fs.existsSync(LOCK)) {
-  const pid = parseInt(fs.readFileSync(LOCK, 'utf8').trim(), 10);
-  try {
-    process.kill(pid, 0); // Check if that PID is still running
-    console.error(`\n⚠️  Another bot instance is already running (PID ${pid})!`);
-    console.error('   Close it first, or delete ".bot.lock" if it\'s stale.\n');
-    process.exit(1);
-  } catch {
-    // Stale lock — previous process is dead, continue
-    fs.unlinkSync(LOCK);
+if (process.env.pm_id === undefined) {
+  const LOCK = path.join(__dirname, '.bot.lock');
+  if (fs.existsSync(LOCK)) {
+    const pid = parseInt(fs.readFileSync(LOCK, 'utf8').trim(), 10);
+    try {
+      process.kill(pid, 0); // Check if that PID is still running
+      console.error(`\n⚠️  Another bot instance is already running (PID ${pid})!`);
+      console.error('   Close it first, or delete ".bot.lock" if it\'s stale.\n');
+      process.exit(1);
+    } catch {
+      // Stale lock — previous process is dead, continue
+      fs.unlinkSync(LOCK);
+    }
   }
+  fs.writeFileSync(LOCK, String(process.pid));
+  const cleanLock = () => { try { fs.unlinkSync(LOCK); } catch {} };
+  process.on('exit', cleanLock);
+  process.on('SIGINT', () => { cleanLock(); process.exit(); });
+  process.on('SIGTERM', () => { cleanLock(); process.exit(); });
 }
-fs.writeFileSync(LOCK, String(process.pid));
-const cleanLock = () => { try { fs.unlinkSync(LOCK); } catch {} };
-process.on('exit', cleanLock);
-process.on('SIGINT', () => { cleanLock(); process.exit(); });
-process.on('SIGTERM', () => { cleanLock(); process.exit(); });
 
 const ffmpegPath = require('ffmpeg-static');
 
