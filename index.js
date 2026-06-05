@@ -34,7 +34,49 @@ const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const { DisTube }       = require('distube');
 const { SpotifyPlugin } = require('@distube/spotify');
 const { YouTubePlugin } = require('@distube/youtube');
-const { CUSTOM_FILTERS } = require('./src/utils/filters');
+const { CUSTOM_FILTERS }  = require('./src/utils/filters');
+
+// ─── YouTube Cookie Loader ─────────────────────────────────────────────────────
+// Parses Netscape cookies.txt (from "Get cookies.txt LOCALLY" extension)
+// into the ytdl.Cookie[] format required by @distube/youtube 1.0.4
+function loadYouTubeCookies() {
+  const cookieFile = path.join(__dirname, 'cookies.txt');
+  if (!fs.existsSync(cookieFile)) return undefined;
+
+  const cookies = [];
+  const lines = fs.readFileSync(cookieFile, 'utf8').split('\n');
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue; // skip comments
+
+    const parts = trimmed.split('\t');
+    if (parts.length < 7) continue;
+
+    const [domain, , cookiePath, secure, expires, name, ...valueParts] = parts;
+    const value = valueParts.join('\t'); // handle values containing tabs
+
+    if (!name || !value) continue;
+
+    cookies.push({
+      name:     name.trim(),
+      value:    value.trim(),
+      domain:   domain.trim(),
+      path:     cookiePath.trim(),
+      expires:  parseInt(expires, 10) || undefined,
+      secure:   secure.trim() === 'TRUE',
+      httpOnly: false,
+    });
+  }
+
+  if (cookies.length) {
+    console.log(`🍪  Loaded ${cookies.length} YouTube cookies from cookies.txt`);
+  } else {
+    console.warn('⚠️  cookies.txt found but no cookies parsed — check the format.');
+  }
+  return cookies.length ? cookies : undefined;
+}
+
 
 // ─── Discord Client ───────────────────────────────────────────────────────────
 const client = new Client({
@@ -60,7 +102,7 @@ client.distube = new DisTube(client, {
     path: ffmpegPath,
   },
   plugins: [
-    new YouTubePlugin({}),
+    new YouTubePlugin({ cookies: loadYouTubeCookies() }),
     new SpotifyPlugin({    // ← Spotify → resolves to YouTube search
       api: {
         clientId:     process.env.SPOTIFY_CLIENT_ID,
