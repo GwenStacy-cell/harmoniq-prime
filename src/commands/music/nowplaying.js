@@ -12,7 +12,7 @@ module.exports = {
     if (!queue || !queue.songs.length) {
       return interaction.reply({
         embeds: [createErrorEmbed('Nothing is playing right now!')],
-        ephemeral: true,
+        flags: require('discord.js').MessageFlags.Ephemeral,
       });
     }
 

@@ -21,6 +21,7 @@
     "@discordjs/rest": "^2.3.0",
     "@discordjs/voice": "^0.19.2",
     "@distube/spotify": "^2.0.2",
+    "@distube/youtube": "^1.0.4",
     "discord.js": "^14.14.1",
     "distube": "^5.2.3",
     "dotenv": "^16.4.5",

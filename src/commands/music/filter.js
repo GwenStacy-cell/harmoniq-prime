@@ -36,7 +36,7 @@ module.exports = {
     if (!member.voice.channel) {
       return interaction.reply({
         embeds: [createErrorEmbed('You need to be in a voice channel!')],
-        ephemeral: true,
+        flags: require('discord.js').MessageFlags.Ephemeral,
       });
     }
 
@@ -44,7 +44,7 @@ module.exports = {
     if (!queue) {
       return interaction.reply({
         embeds: [createErrorEmbed('Nothing is playing right now!')],
-        ephemeral: true,
+        flags: require('discord.js').MessageFlags.Ephemeral,
       });
     }
 
@@ -82,7 +82,7 @@ module.exports = {
       if (queue.filters.has(filterName)) {
         return interaction.reply({
           embeds: [createErrorEmbed(`Filter **${filterMeta?.name}** is already active!`)],
-          ephemeral: true,
+          flags: require('discord.js').MessageFlags.Ephemeral,
         });
       }
       queue.filters.add(filterName);
@@ -96,7 +96,7 @@ module.exports = {
       if (!queue.filters.has(filterName)) {
         return interaction.reply({
           embeds: [createErrorEmbed(`Filter **${filterMeta?.name}** is not active!`)],
-          ephemeral: true,
+          flags: require('discord.js').MessageFlags.Ephemeral,
         });
       }
       queue.filters.remove(filterName);

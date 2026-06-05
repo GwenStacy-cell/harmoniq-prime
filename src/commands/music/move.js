@@ -18,7 +18,7 @@ module.exports = {
     if (!member.voice.channel) {
       return interaction.reply({
         embeds: [createErrorEmbed('You need to be in a voice channel!')],
-        ephemeral: true,
+        flags: require('discord.js').MessageFlags.Ephemeral,
       });
     }
 
@@ -26,7 +26,7 @@ module.exports = {
     if (!queue) {
       return interaction.reply({
         embeds: [createErrorEmbed('Nothing is playing right now!')],
-        ephemeral: true,
+        flags: require('discord.js').MessageFlags.Ephemeral,
       });
     }
 
@@ -38,14 +38,14 @@ module.exports = {
     if (from > max || to > max) {
       return interaction.reply({
         embeds: [createErrorEmbed(`Invalid position! Queue has **${max}** upcoming song(s).`)],
-        ephemeral: true,
+        flags: require('discord.js').MessageFlags.Ephemeral,
       });
     }
 
     if (from === to) {
       return interaction.reply({
         embeds: [createErrorEmbed('`from` and `to` positions are the same!')],
-        ephemeral: true,
+        flags: require('discord.js').MessageFlags.Ephemeral,
       });
     }
 

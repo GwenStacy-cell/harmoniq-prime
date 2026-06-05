@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const { createErrorEmbed } = require('../../utils/embeds');
 
 module.exports = {
@@ -13,7 +13,14 @@ module.exports = {
     ),
 
   async execute(interaction) {
-    await interaction.deferReply();
+    // Guard: if already acknowledged (e.g. two bot instances), bail silently
+    if (interaction.deferred || interaction.replied) return;
+    try {
+      await interaction.deferReply();
+    } catch (err) {
+      if (err.code === 40060 || err.code === 10062) return; // Already ack'd — ignore
+      throw err;
+    }
 
     const { member, channel } = interaction;
     const voiceChannel = member.voice.channel;
@@ -35,9 +42,11 @@ module.exports = {
       await interaction.deleteReply().catch(() => {});
     } catch (error) {
       console.error('[/play]', error.message);
-      return interaction.editReply({
-        embeds: [createErrorEmbed(`Playback failed: ${error.message}`)],
-      });
+      const reply = { embeds: [createErrorEmbed(`Playback failed: ${error.message}`)] };
+      if (interaction.deferred || interaction.replied) {
+        return interaction.editReply(reply).catch(() => {});
+      }
+      return interaction.reply({ ...reply, flags: MessageFlags.Ephemeral }).catch(() => {});
     }
   },
 };

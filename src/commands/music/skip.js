@@ -12,7 +12,7 @@ module.exports = {
     if (!member.voice.channel) {
       return interaction.reply({
         embeds: [createErrorEmbed('You need to be in a voice channel!')],
-        ephemeral: true,
+        flags: require('discord.js').MessageFlags.Ephemeral,
       });
     }
 
@@ -21,7 +21,7 @@ module.exports = {
     if (!queue) {
       return interaction.reply({
         embeds: [createErrorEmbed('Nothing is playing right now!')],
-        ephemeral: true,
+        flags: require('discord.js').MessageFlags.Ephemeral,
       });
     }
 
@@ -35,7 +35,7 @@ module.exports = {
     } catch (error) {
       await interaction.reply({
         embeds: [createErrorEmbed(error.message)],
-        ephemeral: true,
+        flags: require('discord.js').MessageFlags.Ephemeral,
       });
     }
   },

@@ -5,11 +5,36 @@
 
 require('dotenv').config();
 
+// ─── Single-Instance Lock ─────────────────────────────────────────────────────
+// Prevents running two copies at once (which causes 40060 errors)
+const fs   = require('fs');
+const path = require('path');
+const LOCK = path.join(__dirname, '.bot.lock');
+
+if (fs.existsSync(LOCK)) {
+  const pid = parseInt(fs.readFileSync(LOCK, 'utf8').trim(), 10);
+  try {
+    process.kill(pid, 0); // Check if that PID is still running
+    console.error(`\n⚠️  Another bot instance is already running (PID ${pid})!`);
+    console.error('   Close it first, or delete ".bot.lock" if it\'s stale.\n');
+    process.exit(1);
+  } catch {
+    // Stale lock — previous process is dead, continue
+    fs.unlinkSync(LOCK);
+  }
+}
+fs.writeFileSync(LOCK, String(process.pid));
+const cleanLock = () => { try { fs.unlinkSync(LOCK); } catch {} };
+process.on('exit', cleanLock);
+process.on('SIGINT', () => { cleanLock(); process.exit(); });
+process.on('SIGTERM', () => { cleanLock(); process.exit(); });
+
 const ffmpegPath = require('ffmpeg-static');
 
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
-const { DisTube } = require('distube');
+const { DisTube }       = require('distube');
 const { SpotifyPlugin } = require('@distube/spotify');
+const { YouTubePlugin } = require('@distube/youtube');
 const { CUSTOM_FILTERS } = require('./src/utils/filters');
 
 // ─── Discord Client ───────────────────────────────────────────────────────────
@@ -29,14 +54,15 @@ client.stay247            = new Set();           // guildIds in 24/7 mode
 
 // ─── DisTube Setup ────────────────────────────────────────────────────────────
 client.distube = new DisTube(client, {
-  emitNewSongOnly:       true,    // Only fire playSong on new songs (not restarts)
-  joinNewVoiceChannel:   true,
-  customFilters:         CUSTOM_FILTERS,
+  emitNewSongOnly:     true,
+  joinNewVoiceChannel: true,
+  customFilters:       CUSTOM_FILTERS,
   ffmpeg: {
     path: ffmpegPath,
   },
   plugins: [
-    new SpotifyPlugin({
+    new YouTubePlugin(),   // ← YouTube audio extraction (required for DisTube v5)
+    new SpotifyPlugin({    // ← Spotify → resolves to YouTube search
       api: {
         clientId:     process.env.SPOTIFY_CLIENT_ID,
         clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
@@ -63,6 +89,8 @@ client.login(process.env.DISCORD_TOKEN).catch((err) => {
 
 // ─── Global Error Handlers ────────────────────────────────────────────────────
 process.on('unhandledRejection', (err) => {
+  // Silently ignore 40060 (interaction already acknowledged by another process)
+  if (err?.code === 40060 || err?.code === 10062) return;
   console.error('[Unhandled Rejection]', err);
 });
 

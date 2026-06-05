@@ -12,7 +12,7 @@ module.exports = {
     if (!member.voice.channel) {
       return interaction.reply({
         embeds: [createErrorEmbed('You need to be in a voice channel!')],
-        ephemeral: true,
+        flags: require('discord.js').MessageFlags.Ephemeral,
       });
     }
 
@@ -20,14 +20,14 @@ module.exports = {
     if (!queue) {
       return interaction.reply({
         embeds: [createErrorEmbed('Nothing is playing right now!')],
-        ephemeral: true,
+        flags: require('discord.js').MessageFlags.Ephemeral,
       });
     }
 
     if (queue.songs.length < 3) {
       return interaction.reply({
         embeds: [createErrorEmbed('Not enough songs in the queue to shuffle! (need at least 2 in queue)')],
-        ephemeral: true,
+        flags: require('discord.js').MessageFlags.Ephemeral,
       });
     }
 

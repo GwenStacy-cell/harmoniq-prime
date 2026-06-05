@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, MessageFlags } = require('discord.js');
 const {
   createErrorEmbed,
   createSuccessEmbed,
@@ -7,6 +7,9 @@ const {
   createQueueEmbed,
   COLORS,
 } = require('../../utils/embeds');
+
+// Shorthand for ephemeral flag (replaces deprecated ephemeral: true)
+const EPHEMERAL = { flags: MessageFlags.Ephemeral };
 
 // ─── Main interaction router ──────────────────────────────────────────────────
 module.exports = {
@@ -21,6 +24,8 @@ module.exports = {
       try {
         await command.execute(interaction);
       } catch (error) {
+        // Silently ignore already-acknowledged errors (duplicate bot instances)
+        if (error.code === 40060 || error.code === 10062) return;
         console.error(`[CMD ERROR] /${interaction.commandName}:`, error);
         const embed = createErrorEmbed(
           'An error occurred while running this command. Please try again.'
@@ -28,7 +33,7 @@ module.exports = {
         if (interaction.deferred || interaction.replied) {
           await interaction.editReply({ embeds: [embed] }).catch(() => {});
         } else {
-          await interaction.reply({ embeds: [embed], ephemeral: true }).catch(() => {});
+          await interaction.reply({ embeds: [embed], ...EPHEMERAL }).catch(() => {});
         }
       }
       return;
@@ -53,138 +58,94 @@ async function handleMusicButton(client, interaction) {
   const distube = client.distube;
   const queue   = distube.getQueue(guild);
 
-  // Buttons that need the user to be in a VC
   const needsVoice = !['music_queue', 'music_lyrics'].includes(customId);
 
   if (needsVoice && !member.voice.channel) {
     return interaction.reply({
       embeds: [createErrorEmbed('Join a voice channel first!')],
-      ephemeral: true,
+      ...EPHEMERAL,
     });
   }
 
   if (!queue && customId !== 'music_queue') {
     return interaction.reply({
       embeds: [createErrorEmbed('Nothing is playing right now!')],
-      ephemeral: true,
+      ...EPHEMERAL,
     });
   }
 
   try {
     switch (customId) {
-      // ─── Pause / Resume ──────────────────────────────────────────────────
       case 'music_pause': {
         if (queue.paused) {
           distube.resume(guild);
-          await interaction.reply({
-            embeds: [createSuccessEmbed('▶️  Resumed the music!')],
-            ephemeral: true,
-          });
+          await interaction.reply({ embeds: [createSuccessEmbed('▶️  Resumed the music!')], ...EPHEMERAL });
         } else {
           distube.pause(guild);
-          await interaction.reply({
-            embeds: [createSuccessEmbed('⏸️  Paused the music!')],
-            ephemeral: true,
-          });
+          await interaction.reply({ embeds: [createSuccessEmbed('⏸️  Paused the music!')], ...EPHEMERAL });
         }
         await refreshNowPlayingMessage(client, guild);
         break;
       }
 
-      // ─── Skip ────────────────────────────────────────────────────────────
       case 'music_skip': {
         const skipped = queue.songs[0]?.name || 'current song';
         await distube.skip(guild);
-        await interaction.reply({
-          embeds: [createSuccessEmbed(`⏭️  Skipped **${skipped}**!`)],
-          ephemeral: true,
-        });
+        await interaction.reply({ embeds: [createSuccessEmbed(`⏭️  Skipped **${skipped}**!`)], ...EPHEMERAL });
         break;
       }
 
-      // ─── Back ────────────────────────────────────────────────────────────
       case 'music_back': {
         await distube.previous(guild);
-        await interaction.reply({
-          embeds: [createSuccessEmbed('⏮️  Going back to the previous song!')],
-          ephemeral: true,
-        });
+        await interaction.reply({ embeds: [createSuccessEmbed('⏮️  Going back to the previous song!')], ...EPHEMERAL });
         break;
       }
 
-      // ─── Stop ────────────────────────────────────────────────────────────
       case 'music_stop': {
         clearNowPlayingMessage(client, guild);
         distube.stop(guild);
-        await interaction.reply({
-          embeds: [createSuccessEmbed('⏹️  Stopped and cleared the queue!')],
-          ephemeral: true,
-        });
+        await interaction.reply({ embeds: [createSuccessEmbed('⏹️  Stopped and cleared the queue!')], ...EPHEMERAL });
         break;
       }
 
-      // ─── Loop ────────────────────────────────────────────────────────────
       case 'music_loop': {
         const newMode = (queue.repeatMode + 1) % 3;
         distube.setRepeatMode(guild, newMode);
         const modes = ['Off', '🔂 Song', '🔁 Queue'];
-        await interaction.reply({
-          embeds: [createSuccessEmbed(`Loop mode: **${modes[newMode]}**`)],
-          ephemeral: true,
-        });
+        await interaction.reply({ embeds: [createSuccessEmbed(`Loop mode: **${modes[newMode]}**`)], ...EPHEMERAL });
         await refreshNowPlayingMessage(client, guild);
         break;
       }
 
-      // ─── Shuffle ─────────────────────────────────────────────────────────
       case 'music_shuffle': {
         distube.shuffle(guild);
-        await interaction.reply({
-          embeds: [createSuccessEmbed('🔀  Queue shuffled!')],
-          ephemeral: true,
-        });
+        await interaction.reply({ embeds: [createSuccessEmbed('🔀  Queue shuffled!')], ...EPHEMERAL });
         break;
       }
 
-      // ─── Volume Down ─────────────────────────────────────────────────────
       case 'music_volume_down': {
         const newVol = Math.max(0, (queue.volume || 100) - 10);
         distube.setVolume(guild, newVol);
-        await interaction.reply({
-          embeds: [createSuccessEmbed(`🔉  Volume: **${newVol}%**`)],
-          ephemeral: true,
-        });
+        await interaction.reply({ embeds: [createSuccessEmbed(`🔉  Volume: **${newVol}%**`)], ...EPHEMERAL });
         await refreshNowPlayingMessage(client, guild);
         break;
       }
 
-      // ─── Autoplay ────────────────────────────────────────────────────────
       case 'music_autoplay': {
         const ap = client.distube.toggleAutoplay(guild);
-        await interaction.reply({
-          embeds: [createSuccessEmbed(`🎲  Autoplay **${ap ? 'enabled' : 'disabled'}**!`)],
-          ephemeral: true,
-        });
+        await interaction.reply({ embeds: [createSuccessEmbed(`🎲  Autoplay **${ap ? 'enabled' : 'disabled'}**!`)], ...EPHEMERAL });
         await refreshNowPlayingMessage(client, guild);
         break;
       }
 
-      // ─── Show Queue ──────────────────────────────────────────────────────
       case 'music_queue': {
         if (!queue || !queue.songs.length) {
-          return interaction.reply({
-            embeds: [createErrorEmbed('The queue is empty!')],
-            ephemeral: true,
-          });
+          return interaction.reply({ embeds: [createErrorEmbed('The queue is empty!')], ...EPHEMERAL });
         }
-        await interaction.reply({
-          embeds: [createQueueEmbed(queue, 0)],
-          ephemeral: true,
-        });
+        await interaction.reply({ embeds: [createQueueEmbed(queue, 0)], ...EPHEMERAL });
         break;
       }
 
-      // ─── Lyrics ──────────────────────────────────────────────────────────
       case 'music_lyrics': {
         const songName = queue?.songs[0]?.name;
         await fetchAndShowLyrics(interaction, songName);
@@ -195,7 +156,7 @@ async function handleMusicButton(client, interaction) {
     console.error('[BUTTON ERROR]', error);
     if (!interaction.replied && !interaction.deferred) {
       await interaction
-        .reply({ embeds: [createErrorEmbed(error.message || 'Something went wrong!')], ephemeral: true })
+        .reply({ embeds: [createErrorEmbed(error.message || 'Something went wrong!')], ...EPHEMERAL })
         .catch(() => {});
     }
   }
@@ -220,15 +181,9 @@ async function handleSearchSelect(client, interaction) {
       member:      interaction.member,
       textChannel: interaction.channel,
     });
-    await interaction.editReply({
-      embeds: [createSuccessEmbed('✅  Added to queue!')],
-      components: [],
-    });
+    await interaction.editReply({ embeds: [createSuccessEmbed('✅  Added to queue!')], components: [] });
   } catch (error) {
-    await interaction.editReply({
-      embeds: [createErrorEmbed(error.message)],
-      components: [],
-    });
+    await interaction.editReply({ embeds: [createErrorEmbed(error.message)], components: [] });
   }
 }
 
@@ -263,11 +218,11 @@ async function fetchAndShowLyrics(interaction, songName) {
   if (!songName) {
     return interaction.reply({
       embeds: [createErrorEmbed('No song is currently playing!')],
-      ephemeral: true,
+      ...EPHEMERAL,
     });
   }
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ ...EPHEMERAL });
 
   try {
     const Genius       = require('genius-lyrics');
