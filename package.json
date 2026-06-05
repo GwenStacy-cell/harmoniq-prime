@@ -1,0 +1,31 @@
+{
+  "name": "harmony-music-bot",
+  "version": "2.0.0",
+  "description": "Advanced Discord Music Bot with Spotify, YouTube & Lyrics support",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "deploy": "node deploy-commands.js",
+    "dev": "node --watch index.js"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "music",
+    "spotify",
+    "youtube"
+  ],
+  "author": "Harmony Bot",
+  "license": "MIT",
+  "dependencies": {
+    "@discordjs/rest": "^2.3.0",
+    "@discordjs/voice": "^0.19.2",
+    "@distube/spotify": "^2.0.2",
+    "discord.js": "^14.14.1",
+    "distube": "^5.2.3",
+    "dotenv": "^16.4.5",
+    "ffmpeg-static": "^5.2.0",
+    "genius-lyrics": "^4.4.4",
+    "opusscript": "^0.0.8"
+  }
+}
