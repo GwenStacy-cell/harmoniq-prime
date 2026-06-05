@@ -40,26 +40,32 @@ const { YouTubePlugin } = require('@distube/youtube');
 const { CUSTOM_FILTERS }  = require('./src/utils/filters');
 
 // ─── YouTube Cookie Loader ─────────────────────────────────────────────────────
-// Parses Netscape cookies.txt (from "Get cookies.txt LOCALLY" extension)
-// into the ytdl.Cookie[] format required by @distube/youtube 1.0.4
+// Parses Netscape cookies.txt into ytdl.Cookie[] + raw cookie header string.
+// Handles #HttpOnly_ prefixed lines which standard parsers skip.
 function loadYouTubeCookies() {
   const cookieFile = path.join(__dirname, 'cookies.txt');
-  if (!fs.existsSync(cookieFile)) return undefined;
+  if (!fs.existsSync(cookieFile)) return null;
 
   const cookies = [];
   const lines = fs.readFileSync(cookieFile, 'utf8').split('\n');
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue; // skip comments
+    if (!trimmed) continue;
 
-    const parts = trimmed.split('\t');
+    // Netscape format marks HttpOnly cookies with '#HttpOnly_' prefix
+    const isHttpOnly = trimmed.startsWith('#HttpOnly_');
+    const cleaned   = isHttpOnly ? trimmed.slice('#HttpOnly_'.length) : trimmed;
+
+    // Skip pure comment lines (but NOT #HttpOnly_ lines above)
+    if (cleaned.startsWith('#')) continue;
+
+    const parts = cleaned.split('\t');
     if (parts.length < 7) continue;
 
     const [domain, , cookiePath, secure, expires, name, ...valueParts] = parts;
-    const value = valueParts.join('\t'); // handle values containing tabs
-
-    if (!name || !value) continue;
+    const value = valueParts.join('\t');
+    if (!name || value === undefined) continue;
 
     cookies.push({
       name:     name.trim(),
@@ -68,16 +74,17 @@ function loadYouTubeCookies() {
       path:     cookiePath.trim(),
       expires:  parseInt(expires, 10) || undefined,
       secure:   secure.trim() === 'TRUE',
-      httpOnly: false,
+      httpOnly: isHttpOnly,
     });
   }
 
-  if (cookies.length) {
-    console.log(`🍪  Loaded ${cookies.length} YouTube cookies from cookies.txt`);
-  } else {
+  if (!cookies.length) {
     console.warn('⚠️  cookies.txt found but no cookies parsed — check the format.');
+    return null;
   }
-  return cookies.length ? cookies : undefined;
+
+  console.log(`🍪  Loaded ${cookies.length} YouTube cookies from cookies.txt`);
+  return cookies;
 }
 
 
@@ -105,7 +112,25 @@ client.distube = new DisTube(client, {
     path: ffmpegPath,
   },
   plugins: [
-    new YouTubePlugin({ cookies: loadYouTubeCookies() }),
+    (() => {
+      const ytCookies = loadYouTubeCookies();
+      const cookieHeader = ytCookies
+        ? ytCookies.map(c => `${c.name}=${c.value}`).join('; ')
+        : undefined;
+      return new YouTubePlugin({
+        cookies: ytCookies || undefined,
+        ytdlOptions: {
+          requestOptions: {
+            headers: {
+              // Pass cookies as raw header string for maximum compatibility
+              ...(cookieHeader ? { cookie: cookieHeader } : {}),
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+              'Accept-Language': 'en-US,en;q=0.9',
+            },
+          },
+        },
+      });
+    })(),
     new SpotifyPlugin({    // ← Spotify → resolves to YouTube search
       api: {
         clientId:     process.env.SPOTIFY_CLIENT_ID,
